@@ -1,0 +1,8 @@
+# Runtime state — never commit
+state/
+__pycache__/
+*.pyc
+*.log
+
+# Archived/one-off scripts
+scripts/_archived/
