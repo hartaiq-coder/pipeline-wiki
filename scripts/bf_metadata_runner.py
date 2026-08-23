@@ -17,6 +17,9 @@ PLAYLIST_IDS = {
     'prayer_cn': 'PLgsAd6HNQy7lpA3YbFReNwqFiMqoOCWi1',
     'bm_en': 'PLgsAd6HNQy7mCkZFi9VNkBUMUuKPEqxoI',
     'bm_cn': 'PLgsAd6HNQy7mq_CFgbfWhTQSh_qeFMSQL',
+    # Bible Devotional playlists (wiki-first, fallback to known IDs)
+    'bd_en': 'PLgsAd6HNQy7nuCC7d05oBM8x1Vt_iEGnF',
+    'bd_cn': 'PLgsAd6HNQy7lj_ur2Gcv2tHoj3tODVZ2Y',
 }
 
 
@@ -49,9 +52,10 @@ def next_video():
 
 
 def extract_thumb(video_path: str, asset_dir: str) -> str | None:
-    thumb = Path(asset_dir) / 'thumbnail.jpg'
-    if thumb.exists():
-        return str(thumb)
+    for name in ('thumbnail.jpg', 'thumb.jpg'):
+        thumb = Path(asset_dir) / name
+        if thumb.exists():
+            return str(thumb)
     try:
         proc = subprocess.run(
             ['ffmpeg', '-y', '-ss', '00:00:00.5', '-i', str(video_path),
@@ -135,6 +139,14 @@ def process(item):
         except Exception as e:
             print(f'  Add new to playlist FAILED: {e}')
 
+    # 5. Optionally delete the old (corrupted) video entirely
+    if item.get('delete_old') and item.get('video_id'):
+        try:
+            yt.videos().delete(id=item['video_id']).execute()
+            print(f'  Deleted old video: {item["video_id"]}')
+        except Exception as e:
+            print(f'  Delete old video FAILED: {e}')
+
     return new_vid
 
 
@@ -183,6 +195,23 @@ def main():
 
     print(f'Backfill target: {item["video_id"]}')
     new_vid = process(item)
+
+    # ── Update BD day state (youtube_url) after replacement ─────────────
+    if item.get('pipeline', '').startswith('bd_'):
+        try:
+            lang = item.get('lang', 'en').upper()
+            day = item.get('day')
+            bd_state = f'/root/projects/bible_devotionals/data/{lang}/day_{day}.json'
+            if os.path.exists(bd_state):
+                with open(bd_state) as f:
+                    rec = json.load(f)
+                rec.setdefault('assets', {})['youtube_url'] = f'https://www.youtube.com/watch?v={new_vid}'
+                rec['assets']['yt_video_id'] = new_vid
+                with open(bd_state, 'w') as f:
+                    json.dump(rec, f, indent=2, ensure_ascii=False)
+                print(f'  Updated BD state: {bd_state} → {new_vid}')
+        except Exception as e:
+            print(f'  BD state update FAILED: {e}')
 
     # Mark done
     done = load_json(DONE_PATH, [])

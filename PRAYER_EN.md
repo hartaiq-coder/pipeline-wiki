@@ -22,11 +22,16 @@
 
 ## Reality Check
 
-- **Checked:** 2026-08-06 04:30
-- **Status:** ⚠️ Drift
-- Local state files: 77
-- YouTube playlist videos: 76
-- Highest local day: 77
+- **Checked:** 2026-08-14 11:56
+- **Status:** ✅ Aligned
+- Local state files: 85
+- Local upload claims present: 84
+- YouTube playlist videos: 84
+- Highest local day: 85
 - Missing state days: 0
 - Phantom uploads: 0
+
+### Local States Without YouTube Upload
+
+Day 76
 

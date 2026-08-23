@@ -21,15 +21,12 @@
 
 ## Reality Check
 
-- **Checked:** 2026-08-06 04:30
-- **Status:** ⚠️ Drift
-- Local state files: 77
-- YouTube playlist videos: 57
-- Highest local day: 77
+- **Checked:** 2026-08-14 11:56
+- **Status:** ✅ Aligned
+- Local state files: 85
+- Local upload claims present: 85
+- YouTube playlist videos: 86
+- Highest local day: 85
 - Missing state days: 0
-- Phantom uploads: 1
-
-### Phantom Uploads
-
-- Day 25: `hNX9EmD7v0E` from `/root/projects/prayer/data/day_25_state.json`
+- Phantom uploads: 0
 

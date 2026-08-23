@@ -107,12 +107,16 @@ Wrapper/shell scripts follow the same convention (e.g., `bm_daily_cn.sh`, `bf_un
 
 ## Bible Texts
 
-- Local KJV corpus: `/tmp/kjv_verses.json`
-- Local CUV corpus: `/tmp/zh_cuv.json` (UTF-8 BOM-aware)
+- Local KJV corpus (persistent): `/root/projects/bible_devotionals/data/kjv_verses.json` (66 books, 31,102 verses, full KJV)
+- Local KJV corpus (runtime copy): `/tmp/kjv_verses.json` (volatile — get_kjv_text prefers the persistent copy)
+- Local CUV corpus (persistent): `/root/projects/bible_devotionals/data/zh_cuv.json` (66 books, BOM-aware)
+- Local CUV corpus (runtime copy): `/tmp/zh_cuv.json` (volatile — get_cuv_text prefers the persistent copy)
 - Both pipelines now use local-first lookup; external APIs are fallback only
 - EN getter: `modules/bible_devotional_pipeline.py::get_kjv_text()`
 - CN getter: `modules/bible_cuv_pipeline.py::get_cuv_text()`
-- Result: **0 external Bible text API calls** in normal operation; eliminates 429 risk from verse lookups
+- **Text quality gate (2026-08-07):** `modules/bd_text_quality.py` runs before gathering-save and before TTS — blocks on emoji, TTS leak phrases ("winky face"), cross-language mutation (CJK in EN / latin in CN), markdown/LLM artifacts, U+FFFD replacement chars, HTML/URLs in scripture. Warnings logged for emoticons (auto-fixed) and punctuation anomalies. Audit all days/SRTs: `scan_text_quality.py`. Status set to `blocked_quality` when a day fails the gate.
+- **Emoticon sanitization (2026-08-07):** edge-tts speaks `;)` / `:)` as "winky face" / "smiley". KJV parentheticals like `(the same [is] Zoar;)` triggered this in 11 live EN videos (days 33, 43, 46, 54, 66, 67, 70, 74, 75, 78, 79). Fix: `sanitize_scripture_text()` in `bible_devotional_pipeline.py` strips `;`/`:` + adjacent paren; applied in `_clean_verse_separators`, `bd_tts.py` (defense-in-depth), and to the whole corpus + all day JSONs via `sanitize_bible_corpus.py`. Re-uploads queued via backfill manager (`delete_old=True`). Rebuild corpus anytime: `fetch_kjv_corpus.py`.
+- **CUV corruption fix (2026-08-07):** bolls.life upstream returns U+FFFD at 5 spots (Jer 29:6 裡, Matt 6:19-20 銹, Col 1:29 裡, James 5:3 鏽). Repaired via `fix_cuv_corpus.py` with known-correct traditional CUV chars; CN day 6 re-pulled.
 
 ## Bible Reading Plan
 

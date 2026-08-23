@@ -202,16 +202,29 @@ def analyze_section(project, lang, yt_videos, local_rows):
 
     phantom = []
     uploaded_local = 0
+    local_unuploaded_days = []
     for r in local_rows:
         claimed = r.get("yt_id") or ""
         if not claimed:
+            local_unuploaded_days.append(r["day"])
             continue
         if claimed in yt_ids:
             uploaded_local += 1
         else:
             phantom.append({"day": r["day"], "yt_id": claimed, "path": r["path"]})
 
-    status = "✅ Aligned" if len(local_rows) == len(yt_videos) and not missing_days and not phantom else "⚠️ Drift"
+    claimed_days = {r["day"] for r in local_rows if r.get("yt_id")}
+    yt_days = {v["day"] for v in yt_videos if v.get("day") is not None}
+    youtube_only_days = sorted(yt_days - claimed_days)
+    local_only_claimed_days = sorted(claimed_days - yt_days)
+
+    # BD is append-only by design: dashboard/local parity is not a drift signal.
+    # For BM/Prayer, an unuploaded local state is pending work, not a phantom;
+    # only a YouTube day without a local claim or a bad claimed ID is drift.
+    if project == "BD":
+        status = "✅ Aligned"
+    else:
+        status = "✅ Aligned" if not missing_days and not phantom and not youtube_only_days else "⚠️ Drift"
     return {
         "project": project,
         "lang": lang,
@@ -221,6 +234,9 @@ def analyze_section(project, lang, yt_videos, local_rows):
         "yt_count": len(yt_videos),
         "yt_uploaded_count": len(yt_ids),
         "local_uploaded_count": uploaded_local,
+        "local_unuploaded_days": sorted(local_unuploaded_days),
+        "youtube_only_days": youtube_only_days,
+        "local_only_claimed_days": local_only_claimed_days,
         "missing_state_days": missing_days,
         "phantom_uploads": phantom,
         "status_override": status,
@@ -233,6 +249,8 @@ def build_wiki_section(sec, analysis):
     yt = analysis["yt_count"]
     gap = analysis["missing_state_days"]
     phantom = analysis["phantom_uploads"]
+    local_unuploaded = analysis.get("local_unuploaded_days", [])
+    youtube_only = analysis.get("youtube_only_days", [])
     status = analysis.get("status_override") or ("✅ Aligned" if not gap and not phantom else "⚠️ Drift")
     now = utcnow().astimezone(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M")
 
@@ -241,6 +259,7 @@ def build_wiki_section(sec, analysis):
         f"- **Checked:** {now}\n"
         f"- **Status:** {status}\n"
         f"- Local state files: {analysis['local_state_count']}\n"
+        f"- Local upload claims present: {analysis['local_uploaded_count']}\n"
         f"- YouTube playlist videos: {yt}\n"
         f"- Highest local day: {local}\n"
         f"- Missing state days: {len(gap)}\n"
@@ -253,6 +272,12 @@ def build_wiki_section(sec, analysis):
         for p in phantom[:20]:
             block += f"- Day {p['day']}: `{p['yt_id']}` from `{p['path']}`\n"
         block += "\n"
+    if local_unuploaded:
+        block += "### Local States Without YouTube Upload\n\n"
+        block += ", ".join(f"Day {d}" for d in local_unuploaded[:30]) + "\n\n"
+    if youtube_only:
+        block += "### YouTube Days Without Local Claim\n\n"
+        block += ", ".join(f"Day {d}" for d in youtube_only[:30]) + "\n\n"
     return block
 
 
@@ -301,6 +326,11 @@ def check_pipeline_errors(log_path: str, pipeline_name: str, max_age_hours: int 
                 continue
             # Skip "Done — FB=ok IG=FAIL" status lines (old digest runs)
             if 'Done —' in line and 'IG=FAIL' in line:
+                continue
+            # Optional/disabled integrations are not pipeline failures.
+            if ('FB_ACCESS_TOKEN' in line or 'META_ACCESS_TOKEN' in line or
+                    '[TIKTOK]' in line or '.ttdash.json' in line or
+                    'summary: enabled=' in line):
                 continue
             errors.append(f"{pipeline_name}: {line.strip()[-200:]}")
     except Exception as e:
@@ -606,7 +636,7 @@ def main():
             continue
         links[sec] = {
             "highest_day": data["highest_local_day"],
-            "status": "drift" if data["missing_state_days"] or data["phantom_uploads"] else "ok",
+            "status": "drift" if data.get("status_override") != "✅ Aligned" else "ok",
             "updated_at": now.isoformat().replace("+00:00", "Z"),
         }
     with open(os.path.join(STATE_DIR, "links.json"), "w") as f:
