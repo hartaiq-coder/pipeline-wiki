@@ -20,13 +20,14 @@
 
 ## Reality Check
 
-- **Checked:** 2026-08-06 04:30
+- **Checked:** 2026-08-14 11:56
 - **Status:** ⚠️ Drift
-- Local state files: 61
-- YouTube playlist videos: 63
-- Highest local day: 62
+- Local state files: 71
+- Local upload claims present: 62
+- YouTube playlist videos: 73
+- Highest local day: 72
 - Missing state days: 1
-- Phantom uploads: 5
+- Phantom uploads: 4
 
 ### Missing State Days
 
@@ -38,5 +39,12 @@
 - Day 27: `eR37lWvqLpo` from `/root/projects/motivational-biblical/data/day_27_state.json`
 - Day 41: `eW729QgyKBA` from `/root/projects/motivational-biblical/data/day_41_state.json`
 - Day 43: `_k4EYODGq3E` from `/root/projects/motivational-biblical/data/day_43_state.json`
-- Day 62: `gHthJI1sWw4` from `/root/projects/motivational-biblical/data/day_62_state.json`
+
+### Local States Without YouTube Upload
+
+Day 2, Day 18, Day 25, Day 42, Day 64
+
+### YouTube Days Without Local Claim
+
+Day 18, Day 25
 
